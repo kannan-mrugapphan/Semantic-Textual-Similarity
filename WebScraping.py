@@ -6,10 +6,6 @@ import os
 
 os.chdir('C:/ms cs/Web Scraping')
 
-URL = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
-#URL = 'https://helpx.adobe.com/security/products/experience-manager/apsb20-01.html'
-
-
 #read from a text file with a list of different webpages in seperate lines into a list
 def getURLs(file):
     urlList = []
@@ -17,17 +13,6 @@ def getURLs(file):
         for url in f:
             urlList.append(url)
     return urlList
-
-urlList = getURLs('urls.txt')
-#URL = urlList[0]
-print(type(urlList[0]))
-source = requests.get(URL).text
-soup = BeautifulSoup(source, 'lxml')
-#print(soup.prettify())
-
-result = {}
-CVEs = []
-currentCVE = {}
 
 #formatDate scraps published date from web page and converts it into iso format
 def formatDate(date):
@@ -41,29 +26,38 @@ def formatDate(date):
     return datetimeObject.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
 def buildCVE(vulnerablity):
-    timestamp = datetime.utcnow().isoformat() 
+    timestamp = datetime.utcnow().isoformat() #current timestamp in iso format
     currentCVE['Timestamp'] = timestamp
 
-    tables = soup.findAll('div', class_ = 'table parbase section')
-    bulletinInfo = tables[0]
-    datePublished = bulletinInfo.findAll('tr')[1].findAll('td')[1].text
+    #observation - all the given help pages of adobe had 4 tables
+    #table 1 - bulletin info with id, published date and priority
+    #table 2 - affected version with product, version and platform
+    #table 3 - solution with product, version and platform
+    #table 4 - vulnerablity details with category and cve numbers
+    tables = soup.findAll('div', class_ = 'table parbase section') #fetch all tables
 
+    bulletinInfo = tables[0] #scrap published date and format it to iso 
+    datePublished = bulletinInfo.findAll('tr')[1].findAll('td')[1].text
     publishedDate = formatDate(datePublished)
     currentCVE['Published Date'] = publishedDate
 
     #print(vulnerablityDetails.prettify())
+    #cve id is the 5th column in vulnerablity table
     id = vulnerablity.findAll('td')[4].text.replace(u'\xa0', u'').replace(u'\n', u'')
     currentCVE['ID'] = id
 
     url = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
     currentCVE['URL'] = url
 
+    #product name is obtained from page description class
     name = soup.find('div', class_ = 'page-description').text.strip().split('|')[0].split()[-1]
     currentCVE['Name'] = name
 
+    #category is the 1st column in vulnerablity table
     description = vulnerablity.findAll('td')[0].text
     currentCVE['Description'] = description.replace(u'\xa0', u'').replace(u'\n', u'')
 
+    #info about each affected version is dumped into cpe list
     cpeList = []
     affectedVersions = tables[1].findAll('tr')[1:]
     for version in affectedVersions:
@@ -81,16 +75,30 @@ def buildCVE(vulnerablity):
     return
 
 def buildResult():
+    #populate the CVE info starting from the vulnerablity table
     tables = soup.findAll('div', class_ = 'table parbase section')
     vulnerablityDetails = tables[3]
     vulnerablityDetails = vulnerablityDetails.findAll('tr')[1:]
     for vulnerablity in vulnerablityDetails:
         buildCVE(vulnerablity)
 
-    result['Source'] = URL.split('//')[-1].split('/')[0]
+    result['Source'] = URL.split('//')[-1].split('/')[0] #source is obtained from domain name of url
     result['Type'] = 'Vendor'
     result['CVEs'] = CVEs
-    
+    return
+
+urlList = getURLs('urls.txt')
+#URL = urlList[0]
+print(urlList)
+
+URL = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
+#URL = 'https://helpx.adobe.com/security/products/experience-manager/apsb20-01.html'
+source = requests.get(URL).text
+soup = BeautifulSoup(source, 'lxml')
+#print(soup.prettify())
+result = {}
+CVEs = []
+currentCVE = {}
 
 buildResult()
 output = json.dumps(result, indent = 4)
