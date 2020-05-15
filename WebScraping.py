@@ -1,12 +1,27 @@
 from bs4 import BeautifulSoup
 import requests
-
 from datetime import datetime
-import locale
+import json
+import os
+
+os.chdir('C:/ms cs/Web Scraping')
 
 URL = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
-source = requests.get(URL).text
+#URL = 'https://helpx.adobe.com/security/products/experience-manager/apsb20-01.html'
 
+
+#read from a text file with a list of different webpages in seperate lines into a list
+def getURLs(file):
+    urlList = []
+    with open(file, 'r') as f:
+        for url in f:
+            urlList.append(url)
+    return urlList
+
+urlList = getURLs('urls.txt')
+#URL = urlList[0]
+print(type(urlList[0]))
+source = requests.get(URL).text
 soup = BeautifulSoup(source, 'lxml')
 #print(soup.prettify())
 
@@ -26,7 +41,7 @@ def formatDate(date):
     return datetimeObject.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
 
 def buildCVE(vulnerablity):
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.utcnow().isoformat() 
     currentCVE['Timestamp'] = timestamp
 
     tables = soup.findAll('div', class_ = 'table parbase section')
@@ -60,7 +75,8 @@ def buildCVE(vulnerablity):
         current['VersionEndIncluding'] = version[1].text.split()[0].replace(u'\xa0', u'').replace(u'\n', u'')
         cpeList.append(current)
 
-    currentCVE['CPE_list'] = cpeList
+    currentCVE['CPEs'] = {}
+    currentCVE['CPEs']['CPE_List'] = cpeList
     CVEs.append(currentCVE)
     return
 
@@ -77,4 +93,5 @@ def buildResult():
     
 
 buildResult()
-print(result)
+output = json.dumps(result, indent = 4)
+print(output)
