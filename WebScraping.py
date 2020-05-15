@@ -88,18 +88,24 @@ def buildResult():
     return
 
 urlList = getURLs('urls.txt')
-#URL = urlList[0]
-print(urlList)
-
-URL = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
+#URL = 'https://helpx.adobe.com/security/products/magento/apsb20-02.html'
 #URL = 'https://helpx.adobe.com/security/products/experience-manager/apsb20-01.html'
-source = requests.get(URL).text
-soup = BeautifulSoup(source, 'lxml')
-#print(soup.prettify())
-result = {}
-CVEs = []
-currentCVE = {}
 
-buildResult()
-output = json.dumps(result, indent = 4)
-print(output)
+for url in urlList:
+    URL = str(url).replace(u'\n', u'')
+    print(url)
+    outputFileName = URL.split('/')[-1].split('.')[0] + '.txt'
+
+    source = requests.get(URL).text
+    soup = BeautifulSoup(source, 'lxml') 
+    #print(soup.prettify())
+    
+    result = {}
+    CVEs = []
+    currentCVE = {}
+
+    buildResult()
+
+    output = json.dumps(result, indent = 4)
+    with open(outputFileName, 'w') as f:
+        f.write(output)
